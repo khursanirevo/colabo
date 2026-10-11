@@ -316,6 +316,10 @@ def cmd_init(a: argparse.Namespace) -> int:
     if not a.no_claude:
         upsert_claude_md(p)
         install_skills()
+        if not a.no_statusline:
+            from . import statusline
+
+            statusline.install()
 
     info(f"wrote {CONFIG_FILE}, {MUTAGEN_FILE}, CLAUDE.md; ssh host '{p.host}' added to {ssh_config_path()}")
     if not quiet_ok([colab, "sessions"]):
@@ -480,6 +484,11 @@ def cmd_doctor(a: argparse.Namespace) -> int:
         f"  [{'ok' if skill.exists() else '--'}] Claude Code skill at {skill}"
         + ("" if skill.exists() else "  (run `colabo skill`)")
     )
+    sl = home() / ".claude" / "colabo-statusline.sh"
+    print(
+        f"  [{'ok' if sl.exists() else '--'}] Claude Code statusline at {sl}"
+        + ("" if sl.exists() else "  (run `colabo statusline install`)")
+    )
     return 0 if ok else 1
 
 
@@ -501,6 +510,12 @@ def cmd_skill(a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_statusline(a: argparse.Namespace) -> int:
+    from . import statusline
+
+    return statusline.main(a)
+
+
 # --------------------------------------------------------------------------- main
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="colabo", description=__doc__.split("\n\n")[0])
@@ -513,7 +528,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--name", help="mutagen sync name (default: project dir name)")
     s.add_argument("--remote", help="remote directory (default: /content/<name>)")
     s.add_argument("--high-mem", action="store_true", help="request high-RAM (Colab Pro)")
-    s.add_argument("--no-claude", action="store_true", help="skip CLAUDE.md section and skill install")
+    s.add_argument("--no-claude", action="store_true", help="skip CLAUDE.md section, skill and statusline install")
+    s.add_argument("--no-statusline", action="store_true", help="skip the Claude Code statusline install")
     s.set_defaults(fn=cmd_init)
 
     s = sp.add_parser("up", help="start the Colab VM (if needed) and the two-way sync")
@@ -544,6 +560,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(fn=cmd_doctor)
     s = sp.add_parser("skill", help="(re)install the Claude Code skills")
     s.set_defaults(fn=cmd_skill)
+    s = sp.add_parser("statusline", help="Claude Code statusline segment: session, sync, compute units")
+    s.add_argument(
+        "action", nargs="?", choices=["install", "uninstall"], help="(un)install into ~/.claude/settings.json"
+    )
+    s.add_argument("--refresh", action="store_true", help=argparse.SUPPRESS)
+    s.set_defaults(fn=cmd_statusline)
     return ap
 
 

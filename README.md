@@ -50,6 +50,7 @@ Other commands:
 | `colabo push` / `colabo pull [dir]` | one-shot rsync if you do not want Mutagen running |
 | `colabo down --keep` | stop sync but keep the VM |
 | `colabo skill` | (re)install the Claude Code skills |
+| `colabo statusline install` / `uninstall` | add/remove the Colab segment in the Claude Code statusline |
 
 GPUs: `T4` (free tier), `L4`, `G4`, `A100`, `H100`, TPUs `v5e1`, `v6e1`, or `cpu`. Anything beyond T4 and `--high-mem` need Colab Pro/Pro+.
 
@@ -60,6 +61,20 @@ GPUs: `T4` (free tier), `L4`, `G4`, `A100`, `H100`, TPUs `v5e1`, `v6e1`, or `cpu
 > train for one epoch on colab and show me the loss curve
 
 and Claude Code will `colabo up`, `colabo run ...`, read `outputs/`, and (if you ask) `colabo down`.
+
+### Statusline
+
+`colabo init` also adds a segment to the Claude Code statusline so you always see whether a VM is running (and burning compute units):
+
+```
+Fable | 📁my-project | 🔀main | ████░░░░░░ 40% | ⚡colab my-project·T4 ⇅ · 12.3 CU · 1.07/hr
+                                                         │               │  │         └ current burn rate
+                                                         │               │  └ compute-unit balance
+                                                         │               └ Mutagen sync running
+                                                         └ session name · accelerator ("off" when no VM)
+```
+
+If you already have a statusline command, colabo chains after it (your output first, the Colab segment appended to the first line). `colabo statusline uninstall` restores the previous command exactly. Session state comes from the colab CLI's local state file (instant); the balance comes from `colab usage`, refreshed in the background every two minutes so the statusline never blocks. Skip it with `colabo init --no-statusline`.
 
 ## How it works, and the gotchas it handles
 

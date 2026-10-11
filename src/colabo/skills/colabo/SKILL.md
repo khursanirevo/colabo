@@ -17,6 +17,7 @@ description: Run a local project on a Google Colab GPU with the `colabo` CLI (tw
 - `colabo push` / `colabo pull [subdir]` — one-shot rsync when Mutagen is not wanted.
 - `colabo status` — VM, ssh master and sync status.
 - `colabo down [--keep]` — stop sync (+ release VM unless `--keep`).
+- `colabo statusline [install|uninstall]` — Claude Code statusline segment `⚡colab <session>·<GPU> ⇅ · <balance> CU · <rate>/hr` (`off` = no VM). Installed by `init`; chains after any existing statusline command.
 
 ## Rules for agents
 - Always finish with `colabo down` (or tell the user to) — idle VMs burn compute units.
