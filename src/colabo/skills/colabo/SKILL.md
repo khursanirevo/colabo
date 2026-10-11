@@ -23,7 +23,7 @@ description: Run a local project on a Google Colab GPU with the `colabo` CLI (tw
 - `colabo feedback "<title>" -m "<what happened / expected>"` — file a GitHub issue on colabo itself with diagnostics (versions, `doctor`, redacted log). `--print` to preview, `--web` for the browser form.
 
 ## Feedback loop (dogfooding)
-When **colabo itself** errors, behaves confusingly, or you wish it had a feature, file it immediately with `colabo feedback "<short title>" -m "<command you ran, what happened, what you expected>"`, then continue with a workaround. File it *right after* the failing command so its log section is attached; if the failure was silent, rerun it once with `colabo -v` first and quote the last lines in `-m`. Do not file issues for errors in the user's own code or in Colab's service (quota, GPU unavailable). Tell the user the issue URL.
+When **colabo itself** errors, behaves confusingly, or you wish it had a feature, use the `colabo-feedback` skill: draft the issue, preview it with `colabo feedback --print ...`, **ask the user** whether to file it, and only then run `colabo feedback`. Never file without their yes. Not for errors in the user's own code or Colab service limits. Continue with a workaround meanwhile.
 
 ## Rules for agents
 - Always finish with `colabo down` (or tell the user to) — idle VMs burn compute units.

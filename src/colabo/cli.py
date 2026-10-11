@@ -481,11 +481,12 @@ def cmd_doctor(a: argparse.Namespace) -> int:
         print(f"  [--] ssh master: {'up' if master_alive(p) else 'down'}  (fine either way; `colabo up` opens it)")
     except ColaboError:
         print("  [--] not inside a colabo project (run `colabo init` in your project)")
-    skill = home() / ".claude" / "skills" / "colabo" / "SKILL.md"
-    print(
-        f"  [{'ok' if skill.exists() else '--'}] Claude Code skill at {skill}"
-        + ("" if skill.exists() else "  (run `colabo skill`)")
-    )
+    for name in BUNDLED_SKILLS:
+        skill = home() / ".claude" / "skills" / name / "SKILL.md"
+        print(
+            f"  [{'ok' if skill.exists() else '--'}] Claude Code skill {name} at {skill}"
+            + ("" if skill.exists() else "  (run `colabo skill`)")
+        )
     print(f"  [--] colabo log: {clog.log_path()}  (`colabo log`, or `colabo -v <cmd>` to watch live)")
     sl = home() / ".claude" / "colabo-statusline.sh"
     print(
@@ -495,12 +496,16 @@ def cmd_doctor(a: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+BUNDLED_SKILLS = ("colabo", "colabo-feedback")
+
+
 def install_skills() -> None:
     base = home() / ".claude" / "skills"
-    dst = base / "colabo" / "SKILL.md"
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    dst.write_text(resources.files("colabo").joinpath("skills/colabo/SKILL.md").read_text())
-    info(f"installed Claude Code skill -> {dst}")
+    for name in BUNDLED_SKILLS:
+        dst = base / name / "SKILL.md"
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_text(resources.files("colabo").joinpath(f"skills/{name}/SKILL.md").read_text())
+        info(f"installed Claude Code skill -> {dst}")
     op = base / "colab-operator" / "SKILL.md"
     if not op.exists() and shutil.which("curl"):
         op.parent.mkdir(parents=True, exist_ok=True)

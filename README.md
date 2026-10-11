@@ -59,7 +59,7 @@ GPUs: `T4` (free tier), `L4`, `G4`, `A100`, `H100`, TPUs `v5e1`, `v6e1`, or `cpu
 
 ## Claude Code
 
-`colabo init` appends a section to your project's `CLAUDE.md` and installs two skills into `~/.claude/skills/`: `colabo` (this workflow) and Google's `colab-operator` (the raw `colab` CLI). After that you can just say:
+`colabo init` appends a section to your project's `CLAUDE.md` and installs three skills into `~/.claude/skills/`: `colabo` (this workflow), `colabo-feedback` (how to report colabo problems: it drafts the issue and asks you before filing) and Google's `colab-operator` (the raw `colab` CLI). After that you can just say:
 
 > train for one epoch on colab and show me the loss curve
 
@@ -96,7 +96,7 @@ Something broke or felt awkward? From any project:
 colabo feedback "up hangs when the T4 pool is empty" -m "ran colabo up at 09:00, waited 5 min, no output"
 ```
 
-It files a GitHub issue with your colabo/colab/mutagen versions, `colabo doctor` output, `colabo.toml`, the log of the **previous colabo command** (every subprocess it ran, exit codes, durations, tracebacks) and the last error lines from the colab CLI log. Tokens are redacted before anything is written to disk. The Claude Code skill tells Claude to do this on its own whenever colabo misbehaves, so dogfooding projects generate issues without you stopping to write them.
+It files a GitHub issue with your colabo/colab/mutagen versions, `colabo doctor` output, `colabo.toml`, the log of the **previous colabo command** (every subprocess it ran, exit codes, durations, tracebacks) and the last error lines from the colab CLI log. Tokens are redacted before anything is written to disk. The `colabo-feedback` skill makes Claude Code draft this for you whenever colabo misbehaves, show you the title and message, and ask before filing. Nothing is sent without your yes.
 
 ### Getting useful logs
 

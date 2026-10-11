@@ -52,6 +52,8 @@ def test_init_writes_everything(env):
     assert "<!-- >>> colabo >>>" in (proj / "CLAUDE.md").read_text()
     assert "mutagen.yml.lock" in (proj / ".gitignore").read_text()
     assert (home / ".claude" / "skills" / "colabo" / "SKILL.md").exists()
+    fb = (home / ".claude" / "skills" / "colabo-feedback" / "SKILL.md").read_text()
+    assert fb.startswith("---\nname: colabo-feedback") and "ask the user" in fb.lower()
 
 
 def test_init_is_idempotent(env):
