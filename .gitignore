@@ -10,3 +10,4 @@ mutagen.yml.lock
 outputs/
 checkpoints/
 data/
+.pip_token
