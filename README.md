@@ -1,5 +1,7 @@
 # colabo
 
+[![PyPI](https://img.shields.io/pypi/v/colabo)](https://pypi.org/project/colabo/) [![CI](https://github.com/khursanirevo/colabo/actions/workflows/ci.yml/badge.svg)](https://github.com/khursanirevo/colabo/actions/workflows/ci.yml)
+
 Work on your project locally with Claude Code (or any editor), run it on a **free Google Colab GPU**.
 
 `colabo` glues together two existing tools so you never think about them:
@@ -21,7 +23,7 @@ Edit a file on your laptop, it is on the GPU box a second later. A script writes
 macOS or Linux (the `colab` CLI does not support Windows). Python 3.12+.
 
 ```bash
-uv tool install git+https://github.com/khursanirevo/colabo      # or: pipx install git+https://github.com/khursanirevo/colabo
+uv tool install colabo          # or: pipx install colabo   (latest dev: uv tool install git+https://github.com/khursanirevo/colabo)
 brew trust mutagen-io/mutagen && brew install mutagen-io/mutagen/mutagen   # macOS; Linux: https://mutagen.io/documentation/introduction/installation
 ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519                     # Colab rejects RSA keys
 colab sessions                                                  # one-time Google login (follow the prompt)
@@ -90,6 +92,10 @@ If you already have a statusline command, colabo chains after it (your output fi
 - [colab-persist](https://github.com/ehzawad/colab-persist): same CLI underneath, adds Drive checkpoints and an MCP server.
 - [claude-colab](https://github.com/LakshmiSravyaVedantham/claude-colab): Flask + Cloudflare tunnel inside a notebook, exposes GPU tools to Claude Code over MCP. No directory sync.
 - [ali/claude-colab](https://github.com/ali/claude-colab): runs Claude Code *inside* the Colab VM.
+
+## Releasing
+
+Bump `version` in `pyproject.toml`, commit, then tag: `git tag v0.1.1 && git push --tags`. The `publish` workflow builds and uploads to PyPI through trusted publishing (no tokens in the repo).
 
 ## Development
 

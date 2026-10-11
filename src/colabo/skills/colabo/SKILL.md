@@ -25,4 +25,4 @@ description: Run a local project on a Google Colab GPU with the `colabo` CLI (tw
 - One SSH connection per runtime: if you see HTTP 429, run `ssh -O exit colab-<session>` then `colabo up`.
 - `colabo ssh`, `colab repl`, `colab console`, `colab auth`, `colab drivemount` need a TTY — never run them from an agent.
 - After `colabo down` the VM is gone: packages and anything outside the synced tree must be reinstalled/recreated on the next `up`.
-- If `colabo` is missing: `uv tool install git+https://github.com/khursanirevo/colabo` (or `pipx install`).
+- If `colabo` is missing: `uv tool install colabo` (or `pipx install colabo`).
