@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "colabo"
-version = "0.1.0"
+version = "0.2.0"
 description = "Work locally with Claude Code, run on a Google Colab GPU: two-way sync + SSH via the official colab CLI."
 readme = "README.md"
 license = "MIT"

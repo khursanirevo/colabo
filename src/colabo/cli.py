@@ -28,7 +28,7 @@ from pathlib import Path
 
 from . import log as clog
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 CONFIG_FILE = "colabo.toml"
 MUTAGEN_FILE = "mutagen.yml"
