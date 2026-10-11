@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "colabo"
+version = "0.1.0"
+description = "Work locally with Claude Code, run on a Google Colab GPU: two-way sync + SSH via the official colab CLI."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [{ name = "Khursani", email = "khursani@revolab.ai" }]
+keywords = ["colab", "gpu", "claude-code", "mutagen", "ssh", "sync"]
+classifiers = [
+  "Environment :: Console",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Build Tools",
+]
+dependencies = ["google-colab-cli>=0.7"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+colabo = "colabo.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/khursanirevo/colabo"
+Issues = "https://github.com/khursanirevo/colabo/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/colabo"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "RUF", "PLW", "FURB"]

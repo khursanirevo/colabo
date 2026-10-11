@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+# colabo (this repo dogfoods itself)
+mutagen.yml.lock
+outputs/
+checkpoints/
+data/

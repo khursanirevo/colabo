@@ -1,0 +1,23 @@
+# Mutagen project (managed by `colabo init`). Two-way sync with the Colab VM.
+#   colabo up | colabo down | mutagen sync list colabo
+sync:
+  defaults:
+    mode: two-way-resolved
+    ignore:
+      vcs: true
+      paths:
+        - "__pycache__"
+        - "*.pyc"
+        - ".venv"
+        - "node_modules"
+        - "mutagen.yml.lock"
+        - "data/**"
+        - "checkpoints/**"
+        - "*.pt"
+        - "*.safetensors"
+        - "*.ckpt"
+        - "wandb"
+        - ".DS_Store"
+  colabo:
+    alpha: "."
+    beta: "colab-work:/content/colabo"

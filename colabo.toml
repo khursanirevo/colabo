@@ -1,0 +1,6 @@
+# colabo project settings (https://github.com/khursanirevo/colabo)
+name = "colabo"            # mutagen sync name
+session = "work"      # colab CLI session name; ssh host becomes colab-work
+accelerator = "T4"   # T4 | L4 | G4 | A100 | H100 | v5e1 | v6e1 | cpu
+remote = "/content/colabo"
+high_mem = false
