@@ -26,6 +26,8 @@ import tomllib
 from importlib import resources
 from pathlib import Path
 
+from . import log as clog
+
 __version__ = "0.1.0"
 
 CONFIG_FILE = "colabo.toml"
@@ -53,13 +55,13 @@ def ssh_config_path() -> Path:
 
 
 def run(cmd: list[str], *, check: bool = True, capture: bool = False, **kw) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, check=check, text=True, capture_output=capture, **kw)
+    return clog.sh(cmd, check=check, text=True, capture_output=capture, **kw)
 
 
 def quiet_ok(cmd: list[str]) -> bool:
     """Run a command and return True if it exits 0 (output discarded)."""
     try:
-        return subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+        return clog.sh(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
     except FileNotFoundError:
         return False
 
@@ -275,18 +277,18 @@ def ensure_master(p: Project) -> None:
     if master_alive(p):
         return
     info(f"connecting to Colab session '{p.session}' ({p.accelerator}); first connect allocates the VM...")
-    r = subprocess.run(["ssh", "-fN", p.ssh_target], check=False, text=True, stderr=subprocess.PIPE)
+    r = clog.sh(["ssh", "-fN", p.ssh_target], check=False, text=True, stderr=subprocess.PIPE)
     if r.returncode != 0 or not master_alive(p):
         raise ColaboError("could not open SSH connection to Colab:\n" + r.stderr.strip())
 
 
 def ssh_run(p: Project, remote_cmd: str, *, tty: bool = False, check: bool = True) -> int:
     cmd = ["ssh"] + (["-t"] if tty else []) + [p.ssh_target, remote_cmd]
-    return subprocess.run(cmd, check=check).returncode
+    return clog.sh(cmd, check=check).returncode
 
 
 def mutagen_running(p: Project) -> bool:
-    r = subprocess.run(["mutagen", "sync", "list", p.name], check=False, capture_output=True, text=True)
+    r = clog.sh(["mutagen", "sync", "list", p.name], check=False, capture_output=True, text=True)
     return r.returncode == 0 and "Status:" in r.stdout
 
 
@@ -346,7 +348,7 @@ def cmd_up(a: argparse.Namespace) -> int:
 def cmd_down(a: argparse.Namespace) -> int:
     p = Project.load()
     if mutagen_running(p):
-        subprocess.run(
+        clog.sh(
             ["mutagen", "project", "terminate"],
             check=False,
             cwd=p.root,
@@ -357,14 +359,14 @@ def cmd_down(a: argparse.Namespace) -> int:
     if a.keep:
         info("VM kept running (--keep). Stop it later with: colabo down")
         return 0
-    return subprocess.run([colab_bin(), "stop", "-s", p.session], check=False).returncode
+    return clog.sh([colab_bin(), "stop", "-s", p.session], check=False).returncode
 
 
 def cmd_status(a: argparse.Namespace) -> int:
     p = Project.load()
-    subprocess.run([colab_bin(), "status", "-s", p.session], check=False)
+    clog.sh([colab_bin(), "status", "-s", p.session], check=False)
     print(f"ssh master ({p.host}): {'up' if master_alive(p) else 'down'}")
-    r = subprocess.run(["mutagen", "sync", "list", p.name], check=False, capture_output=True, text=True)
+    r = clog.sh(["mutagen", "sync", "list", p.name], check=False, capture_output=True, text=True)
     if r.returncode == 0:
         status = next((ln.strip() for ln in r.stdout.splitlines() if ln.strip().startswith("Status:")), "?")
         print(f"mutagen ({p.name}): {status}")
@@ -394,12 +396,12 @@ def cmd_ssh(a: argparse.Namespace) -> int:
 def cmd_exec(a: argparse.Namespace) -> int:
     p = Project.load()
     flush(p)
-    return subprocess.run([colab_bin(), "exec", "-s", p.session, "-f", a.file, *a.extra], check=False).returncode
+    return clog.sh([colab_bin(), "exec", "-s", p.session, "-f", a.file, *a.extra], check=False).returncode
 
 
 def cmd_install(a: argparse.Namespace) -> int:
     p = Project.load()
-    return subprocess.run([colab_bin(), "install", "-s", p.session, *a.pkgs], check=False).returncode
+    return clog.sh([colab_bin(), "install", "-s", p.session, *a.pkgs], check=False).returncode
 
 
 def _rsync_excludes(p: Project) -> list[str]:
@@ -420,7 +422,7 @@ def cmd_push(a: argparse.Namespace) -> int:
     p = Project.load()
     ensure_master(p)
     ssh_run(p, f"mkdir -p {shlex.quote(p.remote)}")
-    return subprocess.run(
+    return clog.sh(
         ["rsync", "-az", "--info=progress2", *_rsync_excludes(p), f"{p.root}/", f"{p.ssh_target}:{p.remote}/"],
         check=False,
     ).returncode
@@ -431,7 +433,7 @@ def cmd_pull(a: argparse.Namespace) -> int:
     ensure_master(p)
     sub = a.path.strip("/")
     (p.root / sub).mkdir(parents=True, exist_ok=True)
-    return subprocess.run(
+    return clog.sh(
         ["rsync", "-az", "--info=progress2", f"{p.ssh_target}:{p.remote}/{sub}/", f"{p.root / sub}/"], check=False
     ).returncode
 
@@ -484,6 +486,7 @@ def cmd_doctor(a: argparse.Namespace) -> int:
         f"  [{'ok' if skill.exists() else '--'}] Claude Code skill at {skill}"
         + ("" if skill.exists() else "  (run `colabo skill`)")
     )
+    print(f"  [--] colabo log: {clog.log_path()}  (`colabo log`, or `colabo -v <cmd>` to watch live)")
     sl = home() / ".claude" / "colabo-statusline.sh"
     print(
         f"  [{'ok' if sl.exists() else '--'}] Claude Code statusline at {sl}"
@@ -516,6 +519,20 @@ def cmd_statusline(a: argparse.Namespace) -> int:
     return statusline.main(a)
 
 
+def cmd_log(a: argparse.Namespace) -> int:
+    path = clog.log_path()
+    if a.path:
+        print(path)
+        return 0
+    print(f"# {path}")
+    try:
+        lines = path.read_text(errors="replace").splitlines()
+    except OSError:
+        lines = []
+    print("\n".join(lines[-a.n :]) if lines else "(empty)")
+    return 0
+
+
 def cmd_feedback(a: argparse.Namespace) -> int:
     from . import feedback
 
@@ -526,6 +543,7 @@ def cmd_feedback(a: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="colabo", description=__doc__.split("\n\n")[0])
     ap.add_argument("--version", action="version", version=f"colabo {__version__}")
+    ap.add_argument("-v", "--verbose", action="store_true", help="echo every subprocess and its exit code to stderr")
     sp = ap.add_subparsers(dest="command", required=True)
 
     s = sp.add_parser("init", help="set up this project for Colab (ssh host, mutagen.yml, CLAUDE.md, skill)")
@@ -572,6 +590,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s.add_argument("--refresh", action="store_true", help=argparse.SUPPRESS)
     s.set_defaults(fn=cmd_statusline)
+    s = sp.add_parser("log", help="show colabo's own log (commands run, exit codes, errors)")
+    s.add_argument("-n", type=int, default=40, help="lines to show (default 40)")
+    s.add_argument("--path", action="store_true", help="print only the log file path")
+    s.set_defaults(fn=cmd_log)
     s = sp.add_parser("feedback", help="file a GitHub issue against colabo with diagnostics attached")
     s.add_argument("title", nargs="*", help="one-line issue title")
     s.add_argument("-m", "--message", help="what happened and what you expected")
@@ -582,17 +604,31 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
     args = build_parser().parse_args(argv)
+    if args.command != "statusline":  # rendered every few seconds; would drown the log
+        clog.setup(argv, verbose=args.verbose)
+    rc = 1
     try:
-        return args.fn(args)
+        rc = args.fn(args)
     except ColaboError as e:
+        clog.log.error("%s", e)
         print(f"error: {e}", file=sys.stderr)
-        return 2
+        rc = 2
     except subprocess.CalledProcessError as e:
+        clog.log.error("command failed rc=%s: %s", e.returncode, " ".join(map(str, e.cmd)))
         print(f"error: command failed ({e.returncode}): {' '.join(map(str, e.cmd))}", file=sys.stderr)
-        return e.returncode or 1
+        rc = e.returncode or 1
     except KeyboardInterrupt:
-        return 130
+        clog.log.warning("interrupted")
+        rc = 130
+    except Exception:
+        clog.log.exception("unhandled error")
+        print(f"error: unexpected failure; see `colabo log` ({clog.log_path()})", file=sys.stderr)
+        raise
+    finally:
+        clog.finish(rc)
+    return rc
 
 
 if __name__ == "__main__":

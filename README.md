@@ -96,7 +96,15 @@ Something broke or felt awkward? From any project:
 colabo feedback "up hangs when the T4 pool is empty" -m "ran colabo up at 09:00, waited 5 min, no output"
 ```
 
-It files a GitHub issue with your colabo/colab/mutagen versions, `colabo doctor` output, `colabo.toml`, and the last error lines from the colab CLI log (tokens redacted). The Claude Code skill tells Claude to do this on its own whenever colabo misbehaves, so dogfooding projects generate issues without you stopping to write them.
+It files a GitHub issue with your colabo/colab/mutagen versions, `colabo doctor` output, `colabo.toml`, the log of the **previous colabo command** (every subprocess it ran, exit codes, durations, tracebacks) and the last error lines from the colab CLI log. Tokens are redacted before anything is written to disk. The Claude Code skill tells Claude to do this on its own whenever colabo misbehaves, so dogfooding projects generate issues without you stopping to write them.
+
+### Getting useful logs
+
+- Every command appends to `~/.local/state/colabo/colabo.log` (rotating, 1 MB). `colabo log` shows the tail, `colabo log --path` the file.
+- `colabo -v up` echoes each subprocess and its exit code to stderr as it runs. Use it when something hangs or fails silently.
+- Run `colabo feedback` **right after** the failing command: the report attaches that command's log section automatically.
+- The colab CLI keeps its own debug log at `~/.config/colab-cli/colab.log`; feedback includes only its error/warning lines, redacted.
+- For sync problems: `mutagen sync list <name>` shows conflicts and problems; paste that into `-m`.
 
 ## Alternatives
 

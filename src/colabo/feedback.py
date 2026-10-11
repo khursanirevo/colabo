@@ -20,6 +20,7 @@ import tempfile
 import urllib.parse
 from pathlib import Path
 
+from . import log as clog
 from .cli import CONFIG_FILE, Project, __version__, colab_bin, home, info
 
 REPO = "khursanirevo/colabo"
@@ -92,6 +93,9 @@ def build_report(message: str) -> str:
         proj_cfg,
         "```",
     ]
+    own = clog.recent()
+    if own:
+        parts += ["", "## colabo log (recent commands, redacted)", "```", *own, "```"]
     if log:
         parts += ["", "## Recent colab CLI errors/warnings (redacted)", "```", *log, "```"]
     return "\n".join(parts) + "\n"

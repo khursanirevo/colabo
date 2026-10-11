@@ -196,3 +196,33 @@ def test_feedback_report_redacts_and_includes_doctor(env, monkeypatch):
     assert "it broke" in report and "colabo doctor" in report and 'name = "my-project"' in report
     assert "SECRET" not in report, "tokens must be redacted"
     assert "401" in report and "DEBUG" not in report, "only error/warning lines included"
+
+
+# --------------------------------------------------------------------------- logging
+from colabo import log as clog  # noqa: E402
+
+
+def test_commands_are_logged_and_redacted(env, monkeypatch):
+    home, _ = env
+    monkeypatch.setenv("XDG_STATE_HOME", str(home / "state"))
+    for h in list(clog.log.handlers):
+        clog.log.removeHandler(h)
+    assert cli.main(["init", "--no-claude"]) == 0
+    clog.log.warning("got Bearer abc123 and token=zzz")
+    text = clog.log_path().read_text()
+    assert "=== colabo init --no-claude" in text and "=== exit 0" in text
+    assert "run: " in text and "rc=0" in text, "subprocesses logged with exit codes"
+    assert "abc123" not in text and "zzz" not in text and "<redacted>" in text
+    for h in list(clog.log.handlers):
+        clog.log.removeHandler(h)
+
+
+def test_recent_returns_previous_run_not_current(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+    clog.log_path().write_text(
+        "1 INFO === colabo up\n1 DEBUG run: ssh\n1 WARNING rc=255 10ms: ssh stderr: boom\n1 INFO === exit 2\n"
+        "2 INFO === colabo feedback x\n"
+    )
+    out = clog.recent()
+    assert out[0].endswith("=== colabo up") and any("boom" in ln for ln in out)
+    assert not any("feedback" in ln for ln in out)
