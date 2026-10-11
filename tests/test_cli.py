@@ -1,5 +1,7 @@
 """Offline tests: `colabo init` output and config handling, with fake `colab`/`mutagen` on PATH."""
 
+import contextlib
+import io
 import os
 import stat
 import subprocess
@@ -172,3 +174,25 @@ def test_init_installs_statusline_unless_disabled(env):
     cli.main(["init"])
     assert (home / ".claude" / "colabo-statusline.sh").exists()
     assert _settings(home)["statusLine"]["command"].endswith("colabo-statusline.sh")
+
+
+# --------------------------------------------------------------------------- feedback
+
+
+def test_feedback_report_redacts_and_includes_doctor(env, monkeypatch):
+    home, _ = env
+    cli.main(["init", "--no-claude"])
+    logdir = home / ".config" / "colab-cli"
+    logdir.mkdir(parents=True)
+    (logdir / "colab.log").write_text(
+        "2026-01-01 - colab_cli.client - DEBUG - Request Headers: {'Authorization': 'Bearer ya29.SECRET'}\n"
+        "2026-01-01 - colab_cli.client - ERROR - Response: 401 token=SECRET2 for user\n"
+    )
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        assert cli.main(["feedback", "--print", "my", "title", "-m", "it broke"]) == 0
+    report = out.getvalue()
+    assert report.startswith("# my title")
+    assert "it broke" in report and "colabo doctor" in report and 'name = "my-project"' in report
+    assert "SECRET" not in report, "tokens must be redacted"
+    assert "401" in report and "DEBUG" not in report, "only error/warning lines included"

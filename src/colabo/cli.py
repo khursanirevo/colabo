@@ -516,6 +516,12 @@ def cmd_statusline(a: argparse.Namespace) -> int:
     return statusline.main(a)
 
 
+def cmd_feedback(a: argparse.Namespace) -> int:
+    from . import feedback
+
+    return feedback.main(a)
+
+
 # --------------------------------------------------------------------------- main
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="colabo", description=__doc__.split("\n\n")[0])
@@ -566,6 +572,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s.add_argument("--refresh", action="store_true", help=argparse.SUPPRESS)
     s.set_defaults(fn=cmd_statusline)
+    s = sp.add_parser("feedback", help="file a GitHub issue against colabo with diagnostics attached")
+    s.add_argument("title", nargs="*", help="one-line issue title")
+    s.add_argument("-m", "--message", help="what happened and what you expected")
+    s.add_argument("--web", action="store_true", help="open the prefilled issue form in the browser")
+    s.add_argument("--print", action="store_true", help="print the report instead of filing it")
+    s.set_defaults(fn=cmd_feedback)
     return ap
 
 

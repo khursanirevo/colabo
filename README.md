@@ -53,6 +53,7 @@ Other commands:
 | `colabo down --keep` | stop sync but keep the VM |
 | `colabo skill` | (re)install the Claude Code skills |
 | `colabo statusline install` / `uninstall` | add/remove the Colab segment in the Claude Code statusline |
+| `colabo feedback "title" -m "details"` | file a GitHub issue on colabo with versions, `doctor` output and redacted log attached |
 
 GPUs: `T4` (free tier), `L4`, `G4`, `A100`, `H100`, TPUs `v5e1`, `v6e1`, or `cpu`. Anything beyond T4 and `--high-mem` need Colab Pro/Pro+.
 
@@ -86,6 +87,16 @@ If you already have a statusline command, colabo chains after it (your output fi
 - **Ephemeral VM.** Everything outside the synced tree (pip packages, `/content/*`) disappears at `colabo down` or when Colab reclaims the runtime. Keep installs in a `requirements.txt` and run `colabo run pip install -r requirements.txt` after `up`.
 - **Big files are not synced.** `data/`, `checkpoints/`, `*.pt`, `*.safetensors`, `*.ckpt` are ignored by default (edit `mutagen.yml`). Move them with `colab download -s <session> REMOTE LOCAL`, or mount Drive with `colab drivemount -s <session>`.
 - **Session state.** `colabo.toml` holds the project name, session name, accelerator and remote path. The `colab` CLI keeps its own state in `~/.config/colab-cli/`.
+
+## Feedback
+
+Something broke or felt awkward? From any project:
+
+```bash
+colabo feedback "up hangs when the T4 pool is empty" -m "ran colabo up at 09:00, waited 5 min, no output"
+```
+
+It files a GitHub issue with your colabo/colab/mutagen versions, `colabo doctor` output, `colabo.toml`, and the last error lines from the colab CLI log (tokens redacted). The Claude Code skill tells Claude to do this on its own whenever colabo misbehaves, so dogfooding projects generate issues without you stopping to write them.
 
 ## Alternatives
 
