@@ -1,5 +1,9 @@
 # colabo
 
+Contributor and agent guide: @AGENTS.md
+
+This repo also dogfoods colabo (session `work`, T4). The managed section below is what `colabo init` writes into any project; it is kept here on purpose so changes to the template are visible in the diff.
+
 <!-- >>> colabo >>> (managed by `colabo init`) -->
 ## Running on Google Colab (colabo)
 
