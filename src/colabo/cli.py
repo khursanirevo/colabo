@@ -236,12 +236,12 @@ def claude_md_section(p: Project) -> str:
         This folder is synced two-way with `{p.remote}` on a Colab VM ({p.accelerator}) by Mutagen.
         Edit locally; execute remotely. Commands (run from the project root):
 
-        - `colabo up` starts the VM if needed and the sync. `colabo down` stops both (do this when done; idle VMs burn compute units).
+        - `colabo up` starts the VM if needed and the sync. `colabo down` stops both (do this when done; idle VMs burn compute units). `down` refuses if unsynced files matching the sync exclusions still exist on the VM; use `--force` to destroy them or `--keep` to leave the VM running.
         - `colabo run <cmd...>` flushes the sync, runs `<cmd>` in `{p.remote}` over SSH, then flushes again. Example: `colabo run python train.py --epochs 1`.
         - `colabo exec file.py` runs a local Python file in the persistent Colab kernel (no SSH, state survives between calls).
         - `colabo install pkg ...` installs packages on the VM. They vanish when the session stops.
         - `colabo status` / `colabo doctor` for health checks. `colabo ssh` for an interactive shell (needs a TTY; do not run from Claude).
-        - Write results to `outputs/` so they sync back. `data/`, `checkpoints/`, `*.pt`, `*.safetensors` are NOT synced; move them with `colab download -s {p.session} REMOTE LOCAL` or Google Drive.
+        - Write results to `outputs/` so they sync back. `data/`, `checkpoints/`, `*.pt`, `*.safetensors` are NOT synced and DIE WITH THE VM; move them with `colab download -s {p.session} REMOTE LOCAL`, or better, write artifacts you want to keep in a synced format (e.g. `.npy` instead of `.pt`) so no manual step is needed.
         - Colab allows one SSH connection per runtime. The `{p.host}` host multiplexes it; on HTTP 429 run `ssh -O exit {p.host}` then `colabo up`.
         - Never run `colab repl`, `colab console`, `colab auth`, or `colab drivemount` from Claude (they need a TTY).
         <!-- <<< colabo <<< -->
@@ -345,6 +345,96 @@ def cmd_up(a: argparse.Namespace) -> int:
     return cmd_status(a)
 
 
+# --------------------------------------------------------------------------- teardown safety (#1)
+MAX_LISTED_UNSYNCED = 20
+
+
+# patterns that only ever hide build noise; listing them at teardown would be pure spam
+EXCLUSION_NOISE = frozenset(
+    {"__pycache__", "*.pyc", ".venv", "node_modules", "mutagen.yml.lock", ".DS_Store", "wandb"}
+)
+
+
+def sync_exclusions(p: "Project") -> list[str]:
+    """The ignore patterns from the project's mutagen.yml, so the check always matches the real config.
+
+    Parsed line-wise rather than with a YAML library: colabo writes this file itself with a known shape,
+    and a single-dependency tool should not grow one for a safety net.
+    """
+    cfg = p.root / "mutagen.yml"
+    if not cfg.is_file():
+        return []
+    out, in_paths = [], False
+    for raw in cfg.read_text().splitlines():
+        line = raw.strip()
+        if line.startswith("paths:"):
+            in_paths = True
+            continue
+        if in_paths:
+            if not line.startswith("- "):
+                if line and not line.startswith("#"):
+                    break           # dedented out of the list
+                continue
+            pat = line[2:].strip().strip('"').strip("'")
+            if pat and pat not in EXCLUSION_NOISE:
+                out.append(pat)
+    return out
+
+
+def unsynced_remote_files(p: "Project", patterns: list[str]) -> list[tuple[str, int]]:
+    """Files on the VM matching the sync exclusions: present remotely, and never copied home.
+
+    Returns (relative path, size in bytes), largest first. A failure to reach the VM yields an empty
+    list -- this is a safety net, and it must never be the reason a teardown cannot proceed.
+    """
+    if not patterns:
+        return []
+    clauses: list[str] = []
+    for pat in patterns:
+        pat = pat.rstrip("/")
+        if pat.endswith("/**"):
+            clauses += ["-path", f"*/{pat[:-3]}/*"]
+        else:
+            clauses += ["-name", pat]
+        clauses.append("-o")
+    clauses = clauses[:-1]
+    find = ["find", p.remote, "-type", "f", "(", *clauses, ")", "-printf", "%s\\t%P\\n"]
+    r = clog.sh(["ssh", p.ssh_target, " ".join(find)], check=False, capture_output=True, text=True)
+    if r.returncode != 0:
+        return []
+    out: list[tuple[str, int]] = []
+    for line in r.stdout.splitlines():
+        size, _, rel = line.partition("\t")
+        if rel and size.strip().isdigit():
+            out.append((rel, int(size)))
+    return sorted(out, key=lambda t: -t[1])
+
+
+def _human(n: int) -> str:
+    for unit in ("B", "KB", "MB", "GB"):
+        if n < 1024 or unit == "GB":
+            return f"{n:.1f} {unit}" if unit != "B" else f"{n} B"
+        n /= 1024.0
+    return f"{n:.1f} GB"
+
+
+def warn_unsynced(p: "Project") -> int:
+    """Report excluded files that the teardown is about to destroy. Returns how many were found."""
+    files = unsynced_remote_files(p, sync_exclusions(p))
+    if not files:
+        return 0
+    total = sum(sz for _, sz in files)
+    info(f"{len(files)} unsynced file(s) on the VM will be DESTROYED ({_human(total)} total):")
+    for rel, sz in files[:MAX_LISTED_UNSYNCED]:
+        print(f"    {rel}  {_human(sz)}", file=sys.stderr)
+    if len(files) > MAX_LISTED_UNSYNCED:
+        info(f"  ... and {len(files) - MAX_LISTED_UNSYNCED} more")
+    info(f"  retrieve with:  colab download -s {p.session} <REMOTE> <LOCAL>")
+    info("  keep the VM instead:  colabo down --keep")
+    info("  destroy them anyway:  colabo down --force")
+    return len(files)
+
+
 def cmd_down(a: argparse.Namespace) -> int:
     p = Project.load()
     if mutagen_running(p):
@@ -355,10 +445,16 @@ def cmd_down(a: argparse.Namespace) -> int:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-    quiet_ok(["ssh", "-O", "exit", p.ssh_target])
     if a.keep:
+        quiet_ok(["ssh", "-O", "exit", p.ssh_target])
         info("VM kept running (--keep). Stop it later with: colabo down")
         return 0
+    # #1: the exclusions are a correct sync default but a silent data-loss default at teardown.
+    # Check BEFORE closing the ssh master, since the check needs the connection.
+    if not getattr(a, "force", False) and warn_unsynced(p):
+        info("refusing to destroy the VM; re-run with --force once you have what you need")
+        return 2
+    quiet_ok(["ssh", "-O", "exit", p.ssh_target])
     return clog.sh([colab_bin(), "stop", "-s", p.session], check=False).returncode
 
 
@@ -565,6 +661,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(fn=cmd_up)
     s = sp.add_parser("down", help="stop the sync and release the VM")
     s.add_argument("--keep", action="store_true", help="stop sync but keep the VM running")
+    s.add_argument(
+        "--force", "-f", action="store_true",
+        help="tear down even when unsynced files (matching the sync exclusions) exist on the VM",
+    )
     s.set_defaults(fn=cmd_down)
     s = sp.add_parser("status", help="VM, ssh and sync status")
     s.set_defaults(fn=cmd_status)

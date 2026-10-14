@@ -27,7 +27,7 @@ When **colabo itself** errors, behaves confusingly, or you wish it had a feature
 
 ## Rules for agents
 - Always finish with `colabo down` (or tell the user to) — idle VMs burn compute units.
-- Write results into `outputs/` so they sync back. `data/`, `checkpoints/`, `*.pt`, `*.safetensors` are excluded from sync; fetch large files with `colab download -s <session> REMOTE LOCAL`.
+- Write results into `outputs/` so they sync back. `data/`, `checkpoints/`, `*.pt`, `*.safetensors` are excluded from sync and DIE WITH THE VM; fetch large files with `colab download -s <session> REMOTE LOCAL`, or write keepable artifacts in a synced format (e.g. `.npy` instead of `.pt`).
 - One SSH connection per runtime: if you see HTTP 429, run `ssh -O exit colab-<session>` then `colabo up`.
 - `colabo ssh`, `colab repl`, `colab console`, `colab auth`, `colab drivemount` need a TTY — never run them from an agent.
 - After `colabo down` the VM is gone: packages and anything outside the synced tree must be reinstalled/recreated on the next `up`.
